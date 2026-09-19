@@ -113,11 +113,17 @@ CREATE TABLE accounts (
 
 Running on Render as a web service — build `npm install`, start `npm start`, health check `/health`.
 
-**URL:** TODO — fill in after deploy
+**URL:** https://atlas-account-lookup.onrender.com
 
 ```bash
-npm run smoke -- https://<url>
+curl https://atlas-account-lookup.onrender.com/accounts/ACC-1001
+curl https://atlas-account-lookup.onrender.com/accounts/ACC-9999
+npm run smoke -- https://atlas-account-lookup.onrender.com
 ```
+
+Note that the free tier sleeps after about fifteen minutes of inactivity, so the
+first request after an idle period takes roughly fifty seconds while the service
+wakes up. Subsequent requests are fast.
 
 Render's free tier gives the service an ephemeral disk, so the SQLite file doesn't survive a redeploy. `npm start` notices an empty database and loads the committed CSV, which keeps a fresh container deterministic with nothing external to depend on. That's a prototype trade — in production the database would sit on a persistent disk or managed Postgres, and ingestion would be its own scheduled job triggered by Atlas's upload rather than something the web server does at boot.
 
