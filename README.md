@@ -1,32 +1,25 @@
 # Atlas Recovery — Account Lookup
 
-Lets the CollectWise AI agent look up a debtor account by account number, from the CSV Atlas uploads periodically. The agent can already look up by phone; this adds the second path.
+Lets the CollectWise AI agent look up a debtor account by account number, from the CSV Atlas uploads periodically. The agent could already look up by phone; this adds the second path.
 
-Node + SQLite + Express.
+**Live API:** https://atlas-account-lookup.onrender.com
 
-## Running it
+Node 22, SQLite, Express.
+
+## Run it
 
 ```bash
 npm install
-npm run ingest
-npm start
+npm run ingest     # loads data/atlas_inventory.csv into data/atlas.db
+npm start          # http://localhost:3000
 ```
 
-The API comes up on `http://localhost:3000`. To load a different file:
-
-```bash
-npm run ingest -- path/to/atlas_inventory.csv
-```
-
-`npm run smoke` runs an end-to-end check against a running server (local or deployed).
+- Load a different file: `npm run ingest -- path/to/file.csv`
+- Check a running server: `npm run smoke` (or `npm run smoke -- https://your-url`)
 
 ## Endpoint
 
-`GET /accounts/:accountNumber` and `GET /accounts?account_number=...` both work and return the same thing.
-
-```bash
-curl http://localhost:3000/accounts/ACC-1001
-```
+`GET /accounts/:accountNumber` and `GET /accounts?account_number=...` return the same thing.
 
 ```json
 {
@@ -36,96 +29,109 @@ curl http://localhost:3000/accounts/ACC-1001
   "balance": 2100,
   "status": "Settlement Eligible",
   "client_name": "Alpha Bank",
-  "updated_at": "2026-09-19T17:03:03.219Z"
+  "updated_at": "2026-09-19T19:44:52.266Z"
 }
 ```
 
-Unknown account returns 404:
-
-```json
-{ "error": { "code": "ACCOUNT_NOT_FOUND", "message": "No account found with account_number \"ACC-9999\"." } }
-```
-
-The query form with no account number returns 400 (`MISSING_ACCOUNT_NUMBER`). There's also `GET /health`, which reports the account count — useful as a deploy health check.
+Unknown account returns 404 with `ACCOUNT_NOT_FOUND`. The query form with no account number returns 400. `GET /health` reports the account count.
 
 ## Decisions
 
-**Duplicate account numbers overwrite.** Each upload is a refresh of live inventory, not a delta, so balances and statuses change between files. Skipping would leave the agent quoting a stale balance on a live call, and erroring would let one repeated row block a good batch. Inside a single file the last row wins, and the collision is reported rather than silently resolved — a file with internal duplicates is something Atlas should know about. `ACC-1001` appears twice in the sample CSV; the API returns the later row.
+**Duplicate account numbers overwrite.** Each upload is a refresh of live inventory, not a delta. Skipping would leave the agent quoting a stale balance on a call; erroring would let one repeated row block a good batch. Inside a file the last row wins and the collision is reported, since a file with internal duplicates is something Atlas should know about.
 
-**Account numbers match on a normalized key.** Every row stores a `lookup_key` — uppercase, letters and digits only — and lookups run through the same function. Consumers read their account number aloud and the agent transcribes it, so the punctuation in the CSV won't survive the round trip. `ACC-1001`, `acc 1001` and `ACC1001` all find the same account. The original spelling is what the API echoes back. `ACC-1008` is stored as `acc 1008` in the sample file to cover this.
+**Account numbers match on a normalized key.** Every row stores a `lookup_key` — uppercase, letters and digits only — and lookups use the same function. Consumers read their account number aloud and the agent transcribes it, so punctuation won't survive the round trip. `ACC-1001`, `acc 1001` and `ACC1001` all resolve to one account.
 
-**Status is stored as-is.** The brief mentions Active and Closed, but `Settlement Eligible` turns up too, so the list clearly grows. Mapping unknown statuses to something "safe" at ingest is how an account ends up silently in the wrong bucket, which is the same failure as the payment-plan eligibility bug. Unknown values load unchanged; a blank one becomes `Unknown` and warns.
+**Status is stored as supplied.** The brief names Active and Closed, but `Settlement Eligible` exists too, so the list clearly grows. Coercing unknown statuses into a fixed set at ingest is how an account silently lands in the wrong bucket — the same failure as the payment-plan eligibility bug. A blank status becomes `Unknown` and warns.
 
-**Balances are integer cents.** They get read aloud to consumers and drive payment plan maths, so no floats.
+**Balances are integer cents.** They're read aloud to consumers and drive payment-plan maths, so no floats.
 
-**Bad rows are skipped, not fatal.** A row missing an account number, a name, or with a non-numeric balance is rejected and logged. Everything else loads. The file is applied in one transaction so the agent never reads a half-loaded inventory.
+**Bad rows are skipped, not fatal.** A row missing an account number or name, or with a non-numeric balance, is rejected and logged with its line number. The file applies in one transaction, so the agent never reads a half-loaded inventory. An unparseable phone number is only a warning — the account still works for account-number lookup.
 
-An unparseable phone number is a warning, not a rejection — the account still works for account-number lookup, and dropping a real debt over formatting would be the wrong call.
-
-## What ingest tells you
+## What ingest reports
 
 ```
-Ingested atlas_inventory.csv
-  rows read           14
-  inserted            10
-  updated             0
-  duplicates in file  1
-  rejected            3
-  accounts in db      10
-
-Warnings (3):
-  - line 7: phone_number "123" is not a recognizable number on account ACC-1005
-  - line 12: negative balance treated as a credit on account ACC-1009
-  - line 16: account ACC-1001 also appears on line 2; the later row wins
-
-Rejected rows (3) written to data/rejects.csv:
-  - line 8: account_number is missing
-  - line 9: balance "N/A" is not numeric
-  - line 10: debtor_name is missing
+rows read 14 | inserted 10 | updated 0 | duplicates in file 1 | rejected 3
 ```
 
-`data/rejects.csv` holds each rejected row with its line number, reason and original contents, so Atlas can be told exactly what didn't load instead of just how many.
-
-The sample CSV also covers `$1,234.56` formatting, `(125.00)` credits, a blank line, an extra column, and messy headers.
+Plus a warning per suspicious row and `data/rejects.csv` listing each rejected row with its line number, reason and original contents — so Atlas can be told exactly what didn't load, not just how many.
 
 ## Schema
 
 ```sql
 CREATE TABLE accounts (
   account_number TEXT PRIMARY KEY,
-  lookup_key     TEXT NOT NULL,
+  lookup_key     TEXT NOT NULL,      -- uppercase, alphanumeric only
   debtor_name    TEXT NOT NULL,
   phone_number   TEXT,
-  phone_e164     TEXT,
+  phone_e164     TEXT,               -- indexed, serves the existing phone lookup
   balance_cents  INTEGER NOT NULL,
   status         TEXT NOT NULL,
   client_name    TEXT,
-  source_file    TEXT,
-  source_row     INTEGER,
+  source_file    TEXT,               -- which upload
+  source_row     INTEGER,            -- which line
   created_at     TEXT NOT NULL,
   updated_at     TEXT NOT NULL
 );
 ```
 
-`phone_e164` is indexed so this table can serve the existing phone lookup too, rather than becoming a second source of truth next to it. `source_file` and `source_row` mean a surprising value on a call can be traced back to a line of a specific upload. The schema is created on first run; there's no separate migration step.
+Created automatically on first run; no migration step.
 
-## Deploying
+## The voice agent
 
-Running on Render as a web service — build `npm install`, start `npm start`, health check `/health`.
+The Retell agent verifies identity, asks the consumer to read out their account number, captures it as a dynamic variable and calls `GET /accounts?account_number=...`. The balance it quotes and every offer it makes come from that response — nothing about the money is hardcoded. It also branches on the real `status`: a Closed account is told there's nothing to pay rather than asked for money.
 
-**URL:** https://atlas-account-lookup.onrender.com
+Exported agent JSON: [retell/atlas-recovery-agent.json](retell/atlas-recovery-agent.json)
+
+## Testing
+
+**Wake the API first** — open [/health](https://atlas-account-lookup.onrender.com/health) and wait for a response. The free tier sleeps, and a cold start takes ~50s.
+
+**API**
 
 ```bash
-curl https://atlas-account-lookup.onrender.com/accounts/ACC-1001
-curl https://atlas-account-lookup.onrender.com/accounts/ACC-9999
-npm run smoke -- https://atlas-account-lookup.onrender.com
+curl https://atlas-account-lookup.onrender.com/accounts/ACC-1001       # 200
+curl https://atlas-account-lookup.onrender.com/accounts/ACC-9999       # 404
+curl "https://atlas-account-lookup.onrender.com/accounts?account_number=acc1001"
+npm run smoke -- https://atlas-account-lookup.onrender.com             # 14 checks
 ```
 
-Note that the free tier sleeps after about fifteen minutes of inactivity, so the
-first request after an idle period takes roughly fifty seconds while the service
-wakes up. Subsequent requests are fast.
+The third one returns `ACC-1001`: lookups match on letters and digits only. `ACC-1006` returns 404 because that row had a non-numeric balance and never loaded.
 
-Render's free tier gives the service an ephemeral disk, so the SQLite file doesn't survive a redeploy. `npm start` notices an empty database and loads the committed CSV, which keeps a fresh container deterministic with nothing external to depend on. That's a prototype trade — in production the database would sit on a persistent disk or managed Postgres, and ingestion would be its own scheduled job triggered by Atlas's upload rather than something the web server does at boot.
+**Agent** — call **+1 774 492 5463**. Answer *yes*, give SSN `1234`, then account `ACC-1001`. It should quote **$2,100** from the live API, then offer **$700/month over 3 months**.
+
+Then try to break it:
+
+| Say | Should |
+|---|---|
+| "I need 36 months" | Hold at 24 months / ~$88 |
+| "I'll settle for $1,000 today" | Hold at $1,680 (80%) |
+| "Can a supervisor approve more?" | Decline, not invent approval |
+| "No" to *Is this John Doe?* | Ask for John, **never mention a debt** |
+| Wrong SSN | Transfer, disclose nothing |
+| "I dispute this debt" | Stop negotiating, transfer |
+
+**Reference data**
+
+| Account | Debtor | Balance | Status |
+|---|---|---|---|
+| ACC-1001 | John Doe | $2,100.00 | Settlement Eligible |
+| ACC-1002 | Maria Alvarez | $1,875.50 | Settlement Eligible |
+| ACC-1003 | Kevin Tran | $900.00 | Closed |
+| ACC-1004 | Priya Nair | $12,300.00 | Active |
+| ACC-1005 | Dana Whitfield | $325.75 | Active |
+| ACC-1008 | Omar Haddad | $1,050.25 | Payment Plan |
+| ACC-1009 | Luis Romero | −$125.00 | Active |
+| ACC-1010 | Grace Kim | $780.00 | Settlement Eligible |
+| ACC-1011 | Ann Osei | $0.00 | Closed |
+| ACC-1012 | Tom Becker | $4,500.00 | Settlement Eligible |
+
+`ACC-1008` is stored as `acc 1008` and still resolves. `ACC-1009` and `ACC-1011` carry a credit and a zero balance — both load fine, but the script covers neither, so the agent has no branch for an account with nothing owed.
+
+## Deployment
+
+Render web service, config in [render.yaml](render.yaml). The free tier sleeps after about fifteen minutes idle, so the first request after a quiet period takes roughly fifty seconds.
+
+SQLite sits on an ephemeral disk there, so `npm start` reloads from the committed CSV when it finds an empty database. That keeps a fresh container deterministic with nothing external to depend on. In production the database would use a persistent disk or managed Postgres, and ingestion would be a scheduled job triggered by Atlas's upload rather than something the web server does at boot.
 
 ## Layout
 
@@ -134,45 +140,18 @@ src/normalize.js    field cleaning, validation, the shared lookup key
 src/ingest.js       CSV -> DB
 src/server.js       the API
 src/db.js           connection and queries
-src/schema.sql
-scripts/smoke.js
-data/               sample CSV; the db and rejects file are generated
+scripts/smoke.js    end-to-end checks
+retell/             conversation flow and exported agent
+docs/               testing guide, customer email
 ```
 
-`normalize.js` is shared by both paths on purpose — if the key written at ingest and the key built from a request came from different code, accounts would quietly stop being findable.
+`normalize.js` is shared by the ingest and API paths deliberately. If the key written at ingest and the key built from a request came from different code, accounts would quietly stop being findable.
 
-## The voice agent
-
-The Retell agent calls this API mid-conversation. After it verifies identity it
-asks the consumer to read out their account number, captures it as a dynamic
-variable, and calls `GET /accounts?account_number=...`. The balance it quotes and
-every offer it makes are worked out from what comes back, so nothing about the
-money is hardcoded in the agent.
-
-It branches on the real `status` too. A Closed account gets told there is nothing
-to pay rather than being asked for money, and a number that isn't found gets one
-retry before a transfer to a live agent.
-
-Two things worth flagging.
-
-The first is why the lookup key exists. In a real call the consumer reads their
-account number aloud and the agent transcribes it, so what arrives is `acc-1001`
-rather than `ACC-1001`. A test call also produced `SEC. -1004` for `ACC-1004`,
-which the retry path caught. Matching on letters and digits only is what makes
-the first case work at all.
-
-The second is a tension between the script and the data. The script fixes the
-debtor as John Doe and the creditor as Alpha Bank, while the lookup returns a
-`debtor_name` and `client_name` per account. Verified as John Doe, the agent
-correctly refuses to discuss an account belonging to someone else, which is the
-right instinct but means only `ACC-1001` exercises the full path. A production
-version would greet from the looked-up `debtor_name` and `client_name` instead of
-hardcoding them. I kept the script as specified.
-
-## Assumptions
+## Assumptions and limits
 
 - `account_number` is unique and stable across uploads; it's the identity of a row.
 - Each upload is the current full inventory, not a delta.
-- Statuses outside Active/Closed are expected.
+- Statuses outside Active and Closed are expected.
 - Phone numbers are mostly US 10-digit; `+`-prefixed international ones pass through.
-- No auth, since the endpoint is internal to the agent. In production it would need an API key at minimum — it returns consumer PII and balances.
+- No auth, since the endpoint is internal to the agent. In production it needs an API key at minimum — it returns consumer PII and balances.
+- The call script fixes the debtor as John Doe and the creditor as Alpha Bank, while the lookup returns a name and client per account. Verified as John Doe, the agent correctly refuses to discuss someone else's account, so only `ACC-1001` exercises the full path. A production version would greet from the looked-up `debtor_name` and `client_name`. I kept the script as specified.
