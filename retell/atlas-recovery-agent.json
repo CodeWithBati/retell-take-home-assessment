@@ -1,0 +1,476 @@
+{
+  "agent": {
+    "agent_id": "agent_7805743707d4264eab1e462788",
+    "channel": "voice",
+    "last_modification_timestamp": 1789843524068,
+    "agent_name": "Atlas Recovery Agent",
+    "response_engine": {
+      "type": "conversation-flow",
+      "conversation_flow_id": "conversation_flow_74252439617d",
+      "version": 0
+    },
+    "language": "en-US",
+    "data_storage_setting": "everything",
+    "contact_memory_config": {
+      "enable_update": false,
+      "enable_read": true
+    },
+    "opt_in_signed_url": false,
+    "end_call_after_silence_ms": 30000,
+    "version": 0,
+    "assigned_tags": [],
+    "is_published": false,
+    "post_call_analysis_model": "gpt-5.6-terra",
+    "pii_config": {
+      "categories": [],
+      "mode": "post_call"
+    },
+    "voice_id": "11labs-Merritt",
+    "max_call_duration_ms": 600000,
+    "interruption_sensitivity": 0.7,
+    "allow_user_dtmf": true,
+    "user_dtmf_options": {}
+  },
+  "conversation_flow": {
+    "conversation_flow_id": "conversation_flow_74252439617d",
+    "version": 0,
+    "last_modification_timestamp": 1789843515795,
+    "global_prompt": "## Identity\nYou are Nancy, an account representative calling on behalf of Alpha Bank. You are an AI voice assistant, not a human. If the person asks whether you are a real person, an AI, a bot, or a recording, tell them plainly that you are an AI assistant calling on behalf of Alpha Bank, then carry on.\n\n## Purpose\nYou are calling John Doe about an outstanding balance on his Alpha Bank account. What you are trying to achieve, in order of preference: collect the balance in full, otherwise set up the shortest payment plan he can realistically afford, otherwise agree a settlement.\n\n## Hard limits, never break these\n- Never offer or agree to a payment plan longer than 24 months.\n- Never offer or agree to a settlement below 80 percent of the balance. On a balance of two thousand one hundred dollars, that floor is one thousand six hundred and eighty dollars.\n- Never state a monthly payment lower than eighty seven dollars and fifty cents, which is the balance spread over 24 months.\n- If he pushes for terms beyond these limits, tell him plainly that you are not able to go further, and offer the closest option you can. Do not invent approval you do not have, and do not hint that a supervisor might allow more.\n\n## Compliance\n- Do not discuss the account, the balance, or the fact that this concerns a debt with anyone other than John Doe. Not with family, not with a coworker, not with whoever picks up the phone.\n- Do not confirm or deny that this is about a debt until his identity is verified.\n- Once identity is verified, and before you discuss the balance, say: this is an attempt to collect a debt, and any information obtained will be used for that purpose.\n- If he disputes the debt, says he is represented by an attorney, or asks you to stop contacting him, stop negotiating and transfer him to a live agent.\n\n## Style\n- Speak plainly and calmly. Short sentences. One question at a time.\n- Say amounts the way a person would say them out loud, for example two thousand one hundred dollars.\n- Be respectful about financial hardship. Do not threaten, do not imply legal action, do not pressure.\n- Transcription is imperfect. If digits are unclear, ask him to repeat them once rather than guessing.",
+    "nodes": [
+      {
+        "type": "conversation",
+        "edges": [
+          {
+            "destination_node_id": "node-verify",
+            "transition_condition": {
+              "prompt": "The person confirms they are John Doe",
+              "type": "prompt"
+            },
+            "condition": "The person confirms they are John Doe",
+            "id": "edge-greeting-yes"
+          },
+          {
+            "condition": "The person says they are not John Doe",
+            "id": "edge-greeting-no",
+            "destination_node_id": "node-ask-for-john",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "The person says they are not John Doe, or is clearly someone else"
+            }
+          }
+        ],
+        "display_position": {
+          "x": 0,
+          "y": 400
+        },
+        "skippable": false,
+        "name": "Greeting",
+        "start_speaker": "agent",
+        "instruction": {
+          "text": "Hello, this is Nancy from Alpha Bank. Is this John Doe?",
+          "type": "static_text"
+        },
+        "id": "start-node-greeting"
+      },
+      {
+        "id": "node-ask-for-john",
+        "skippable": false,
+        "name": "Ask For John Doe",
+        "display_position": {
+          "y": 850,
+          "x": 450
+        },
+        "type": "conversation",
+        "instruction": {
+          "text": "Say you are trying to reach John Doe, and ask if you may speak with him. Do not say why you are calling. Do not mention an account, a balance, or a debt to anyone who is not John Doe.",
+          "type": "prompt"
+        },
+        "edges": [
+          {
+            "condition": "John Doe is available or comes to the phone",
+            "id": "edge-john-available",
+            "destination_node_id": "node-verify",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "John Doe is available, or has come to the phone"
+            }
+          },
+          {
+            "destination_node_id": "node-take-message",
+            "condition": "John Doe is not available right now",
+            "id": "edge-john-unavailable",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "John Doe is not available right now"
+            }
+          },
+          {
+            "id": "edge-wrong-number",
+            "transition_condition": {
+              "prompt": "This is a wrong number, or there is nobody by that name at this number",
+              "type": "prompt"
+            },
+            "condition": "Wrong number, nobody by that name",
+            "destination_node_id": "node-end-wrong-number"
+          }
+        ]
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask whether you can leave a message, and ask for a good time to reach John Doe. Say only that Nancy from Alpha Bank called and would like him to call back. Do not give the reason for the call, even if they ask."
+        },
+        "id": "node-take-message",
+        "type": "conversation",
+        "display_position": {
+          "x": 950,
+          "y": 950
+        },
+        "edges": [
+          {
+            "id": "edge-message-taken",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "A message was taken, a call back time was given, or the person declined to take a message"
+            },
+            "condition": "A message or call back time was given, or they declined",
+            "destination_node_id": "node-end-polite"
+          }
+        ],
+        "skippable": false,
+        "name": "Take A Message"
+      },
+      {
+        "skippable": false,
+        "type": "end",
+        "instruction": {
+          "text": "Apologize briefly for the confusion, thank them for their time, and end the call. Do not mention the reason for the call.",
+          "type": "prompt"
+        },
+        "id": "node-end-wrong-number",
+        "display_position": {
+          "y": 1250,
+          "x": 950
+        },
+        "name": "End - Wrong Number"
+      },
+      {
+        "skippable": false,
+        "name": "Identity Verification",
+        "instruction": {
+          "text": "Thank John by name. Ask him to confirm the last four digits of his social security number. If the digits come through unclearly or he misspeaks, ask him to repeat them once. Never say the digits yourself, and never hint at whether he is close.",
+          "type": "prompt"
+        },
+        "display_position": {
+          "x": 450,
+          "y": 300
+        },
+        "edges": [
+          {
+            "id": "edge-verify-pass",
+            "condition": "He gives the last four digits as 1234",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "He gives the last four digits of his social security number as one two three four"
+            },
+            "destination_node_id": "node-balance"
+          },
+          {
+            "destination_node_id": "node-transfer",
+            "id": "edge-verify-fail",
+            "condition": "He gives digits that are not 1234",
+            "transition_condition": {
+              "prompt": "He gives four digits that are not one two three four, having already had a chance to repeat them",
+              "type": "prompt"
+            }
+          },
+          {
+            "id": "edge-verify-refuse",
+            "destination_node_id": "node-transfer",
+            "condition": "He refuses, cannot remember, or asks for a human",
+            "transition_condition": {
+              "prompt": "He refuses to give the digits, cannot remember them, or asks to speak to a human",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-verify",
+        "type": "conversation"
+      },
+      {
+        "skippable": false,
+        "transfer_destination": {
+          "type": "predefined",
+          "number": "+18885551234"
+        },
+        "id": "node-transfer",
+        "name": "Transfer To Live Agent",
+        "type": "transfer_call",
+        "transfer_option": {
+          "type": "cold_transfer",
+          "show_transferee_as_caller": false
+        },
+        "edge": {
+          "id": "edge-transfer-failed",
+          "condition": "Transfer failed",
+          "destination_node_id": "node-end-polite",
+          "transition_condition": {
+            "type": "prompt",
+            "prompt": "Transfer failed"
+          }
+        },
+        "instruction": {
+          "text": "Thanks for your patience. I'm not able to verify that, so I'm going to transfer you to a live agent who can help.",
+          "type": "static_text"
+        },
+        "display_position": {
+          "y": 0,
+          "x": 950
+        }
+      },
+      {
+        "display_position": {
+          "x": 950,
+          "y": 400
+        },
+        "type": "conversation",
+        "id": "node-balance",
+        "skippable": false,
+        "edges": [
+          {
+            "condition": "He agrees to pay the full balance today",
+            "destination_node_id": "node-confirm-full",
+            "id": "edge-pay-full",
+            "transition_condition": {
+              "prompt": "He agrees to pay the full balance today",
+              "type": "prompt"
+            }
+          },
+          {
+            "id": "edge-cannot-pay-full",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "He says he cannot pay the full balance today, or asks what options are available"
+            },
+            "destination_node_id": "node-plan-three-month",
+            "condition": "He cannot pay in full, or asks about options"
+          },
+          {
+            "id": "edge-balance-dispute",
+            "condition": "He disputes the debt, has an attorney, or asks you to stop",
+            "destination_node_id": "node-transfer",
+            "transition_condition": {
+              "prompt": "He disputes the debt, says he is represented by an attorney, or asks you to stop contacting him",
+              "type": "prompt"
+            }
+          }
+        ],
+        "name": "State Balance",
+        "instruction": {
+          "text": "First say: this is an attempt to collect a debt, and any information obtained will be used for that purpose. Then tell John that his current balance with Alpha Bank is two thousand one hundred dollars. Ask whether he is able to take care of the full balance today.",
+          "type": "prompt"
+        }
+      },
+      {
+        "instruction": {
+          "type": "prompt",
+          "text": "Acknowledge what he said without making a fuss of it. Offer a three month payment plan at seven hundred dollars a month. Ask whether that works for him."
+        },
+        "display_position": {
+          "x": 1400,
+          "y": 550
+        },
+        "edges": [
+          {
+            "id": "edge-accept-three-month",
+            "destination_node_id": "node-confirm-plan",
+            "condition": "He accepts the three month plan",
+            "transition_condition": {
+              "prompt": "He accepts the three month payment plan",
+              "type": "prompt"
+            }
+          },
+          {
+            "destination_node_id": "node-negotiate",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "He says three months, or seven hundred dollars a month, is still more than he can manage"
+            },
+            "condition": "Three months is still too much",
+            "id": "edge-decline-three-month"
+          },
+          {
+            "transition_condition": {
+              "prompt": "He disputes the debt, says he is represented by an attorney, or asks you to stop contacting him",
+              "type": "prompt"
+            },
+            "condition": "He disputes the debt, has an attorney, or asks you to stop",
+            "id": "edge-plan-dispute",
+            "destination_node_id": "node-transfer"
+          }
+        ],
+        "skippable": false,
+        "id": "node-plan-three-month",
+        "name": "Offer 3 Month Plan",
+        "type": "conversation"
+      },
+      {
+        "id": "node-negotiate",
+        "display_position": {
+          "y": 650,
+          "x": 1850
+        },
+        "edges": [
+          {
+            "transition_condition": {
+              "prompt": "He accepts a payment plan or a settlement amount that is within the allowed limits",
+              "type": "prompt"
+            },
+            "destination_node_id": "node-confirm-plan",
+            "id": "edge-negotiate-accept",
+            "condition": "He accepts a plan or settlement within the limits"
+          },
+          {
+            "id": "edge-negotiate-stuck",
+            "destination_node_id": "node-no-agreement",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "He will not accept anything within the allowed limits, or is not able to commit to anything today"
+            },
+            "condition": "Nothing within the limits works for him"
+          },
+          {
+            "condition": "He disputes the debt, has an attorney, or asks you to stop",
+            "destination_node_id": "node-transfer",
+            "transition_condition": {
+              "prompt": "He disputes the debt, says he is represented by an attorney, or asks you to stop contacting him",
+              "type": "prompt"
+            },
+            "id": "edge-negotiate-dispute"
+          }
+        ],
+        "name": "Negotiate Within Limits",
+        "instruction": {
+          "type": "prompt",
+          "text": "Ask what he could realistically manage each month, then work toward the shortest plan that fits what he tells you. Move in steps rather than jumping to your limit: six months at three hundred and fifty dollars, then twelve months at one hundred and seventy five dollars, then eighteen months at one hundred and seventeen dollars, then twenty four months at eighty seven dollars and fifty cents. If he says he could manage a lump sum but not the whole amount, offer a settlement, starting near the full balance and going no lower than one thousand six hundred and eighty dollars.\n\nThese are hard limits. Twenty four months is the longest plan you may offer. Eighty seven dollars and fifty cents is the lowest monthly payment. One thousand six hundred and eighty dollars is the lowest settlement. If he asks for longer, lower, or less, tell him plainly that this is as far as you can go, repeat the closest option you can offer, and do not suggest anyone else could approve more."
+        },
+        "skippable": false,
+        "type": "conversation"
+      },
+      {
+        "name": "Confirm Full Payment",
+        "instruction": {
+          "type": "prompt",
+          "text": "Confirm back to him that he is paying two thousand one hundred dollars today, and that this clears the balance. Tell him he will receive written confirmation. Ask if he has any questions."
+        },
+        "skippable": false,
+        "edges": [
+          {
+            "id": "edge-full-confirmed",
+            "condition": "He confirms and has no further questions",
+            "transition_condition": {
+              "prompt": "He confirms the payment and has no further questions",
+              "type": "prompt"
+            },
+            "destination_node_id": "node-end-polite"
+          }
+        ],
+        "type": "conversation",
+        "display_position": {
+          "x": 1400,
+          "y": 200
+        },
+        "id": "node-confirm-full"
+      },
+      {
+        "skippable": false,
+        "name": "Confirm Plan Terms",
+        "type": "conversation",
+        "display_position": {
+          "y": 450,
+          "x": 2300
+        },
+        "id": "node-confirm-plan",
+        "instruction": {
+          "text": "Read the agreed terms back clearly: the monthly amount, how many months, and the total. Ask him to confirm that is right. Tell him he will get written confirmation. Do not change the terms once he has confirmed them.",
+          "type": "prompt"
+        },
+        "edges": [
+          {
+            "condition": "He confirms the terms",
+            "id": "edge-plan-confirmed",
+            "destination_node_id": "node-end-polite",
+            "transition_condition": {
+              "type": "prompt",
+              "prompt": "He confirms the terms are correct"
+            }
+          },
+          {
+            "destination_node_id": "node-negotiate",
+            "condition": "He wants to change the terms",
+            "id": "edge-plan-rework",
+            "transition_condition": {
+              "prompt": "He wants to change the terms before agreeing",
+              "type": "prompt"
+            }
+          }
+        ]
+      },
+      {
+        "skippable": false,
+        "type": "conversation",
+        "name": "No Agreement Today",
+        "edges": [
+          {
+            "id": "edge-no-agreement-done",
+            "destination_node_id": "node-end-polite",
+            "condition": "He gives a follow up time or declines",
+            "transition_condition": {
+              "prompt": "He gives a time to follow up, or declines to set one",
+              "type": "prompt"
+            }
+          }
+        ],
+        "id": "node-no-agreement",
+        "display_position": {
+          "y": 850,
+          "x": 2300
+        },
+        "instruction": {
+          "text": "Do not pressure him. Tell him the offer stays open, ask whether there is a better time to follow up, and let him know he can call Alpha Bank back whenever he is ready.",
+          "type": "prompt"
+        }
+      },
+      {
+        "skippable": false,
+        "id": "node-end-polite",
+        "type": "end",
+        "instruction": {
+          "text": "Thank him for his time and end the call politely.",
+          "type": "prompt"
+        },
+        "display_position": {
+          "y": 650,
+          "x": 2750
+        },
+        "name": "End Call"
+      }
+    ],
+    "start_node_id": "start-node-greeting",
+    "start_speaker": "agent",
+    "tools": [],
+    "model_choice": {
+      "type": "cascading",
+      "model": "gpt-4.1"
+    },
+    "kb_config": {
+      "top_k": 3,
+      "filter_score": 0.6
+    },
+    "begin_tag_display_position": {
+      "y": 400,
+      "x": -300
+    },
+    "is_published": false
+  }
+}
