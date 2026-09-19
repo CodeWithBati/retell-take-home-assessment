@@ -141,6 +141,34 @@ data/               sample CSV; the db and rejects file are generated
 
 `normalize.js` is shared by both paths on purpose — if the key written at ingest and the key built from a request came from different code, accounts would quietly stop being findable.
 
+## The voice agent
+
+The Retell agent calls this API mid-conversation. After it verifies identity it
+asks the consumer to read out their account number, captures it as a dynamic
+variable, and calls `GET /accounts?account_number=...`. The balance it quotes and
+every offer it makes are worked out from what comes back, so nothing about the
+money is hardcoded in the agent.
+
+It branches on the real `status` too. A Closed account gets told there is nothing
+to pay rather than being asked for money, and a number that isn't found gets one
+retry before a transfer to a live agent.
+
+Two things worth flagging.
+
+The first is why the lookup key exists. In a real call the consumer reads their
+account number aloud and the agent transcribes it, so what arrives is `acc-1001`
+rather than `ACC-1001`. A test call also produced `SEC. -1004` for `ACC-1004`,
+which the retry path caught. Matching on letters and digits only is what makes
+the first case work at all.
+
+The second is a tension between the script and the data. The script fixes the
+debtor as John Doe and the creditor as Alpha Bank, while the lookup returns a
+`debtor_name` and `client_name` per account. Verified as John Doe, the agent
+correctly refuses to discuss an account belonging to someone else, which is the
+right instinct but means only `ACC-1001` exercises the full path. A production
+version would greet from the looked-up `debtor_name` and `client_name` instead of
+hardcoding them. I kept the script as specified.
+
 ## Assumptions
 
 - `account_number` is unique and stable across uploads; it's the identity of a row.
