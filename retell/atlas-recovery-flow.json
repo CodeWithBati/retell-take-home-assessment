@@ -65,10 +65,16 @@
           "destination_node_id": "node-take-message"
         },
         {
+          "id": "edge-john-withheld",
+          "condition": "They will not put John Doe on the phone",
+          "transition_condition": { "type": "prompt", "prompt": "The person will not put John Doe on the phone, declines to help, or answers with a flat no without saying he is unavailable or that this is the wrong number" },
+          "destination_node_id": "node-take-message"
+        },
+        {
           "id": "edge-wrong-number",
           "condition": "Wrong number, nobody by that name",
-          "transition_condition": { "type": "prompt", "prompt": "This is a wrong number, or there is nobody by that name at this number" },
-          "destination_node_id": "node-end-wrong-number"
+          "transition_condition": { "type": "prompt", "prompt": "They say explicitly that this is a wrong number, or that there is nobody by that name at this number" },
+          "destination_node_id": "node-close-wrong-number"
         }
       ]
     },
@@ -86,18 +92,31 @@
           "id": "edge-message-taken",
           "condition": "A message or call back time was given, or they declined",
           "transition_condition": { "type": "prompt", "prompt": "A message was taken, a call back time was given, or the person declined to take a message" },
-          "destination_node_id": "node-end-polite"
+          "destination_node_id": "node-say-goodbye"
         }
       ]
     },
     {
-      "id": "node-end-wrong-number",
-      "name": "End - Wrong Number",
-      "type": "end",
+      "id": "node-close-wrong-number",
+      "name": "Close - Wrong Number",
+      "type": "conversation",
       "display_position": { "x": 950, "y": 1300 },
       "instruction": {
-        "type": "prompt",
-        "text": "Apologize briefly for the confusion, thank them for their time, and end the call. Do not mention the reason for the call."
+        "type": "static_text",
+        "text": "Sorry about that, it sounds like I have the wrong number. Thanks for your time, and have a good day."
+      },
+      "edges": [
+        {
+          "id": "edge-wrong-number-closed",
+          "condition": "Describe the transition condition",
+          "transition_condition": { "type": "prompt", "prompt": "Describe the transition condition" }
+        }
+      ],
+      "skip_response_edge": {
+        "id": "edge-wrong-number-skip",
+        "condition": "Skip response",
+        "transition_condition": { "type": "prompt", "prompt": "Skip response" },
+        "destination_node_id": "node-end-polite"
       }
     },
     {
@@ -145,7 +164,7 @@
         "id": "edge-transfer-failed",
         "condition": "Transfer failed",
         "transition_condition": { "type": "prompt", "prompt": "Transfer failed" },
-        "destination_node_id": "node-end-polite"
+        "destination_node_id": "node-say-goodbye"
       }
     },
     {
@@ -267,7 +286,7 @@
           "id": "edge-closed-done",
           "condition": "He acknowledges or has no further questions",
           "transition_condition": { "type": "prompt", "prompt": "He acknowledges, or has no further questions" },
-          "destination_node_id": "node-end-polite"
+          "destination_node_id": "node-say-goodbye"
         }
       ]
     },
@@ -375,7 +394,7 @@
           "id": "edge-full-confirmed",
           "condition": "He confirms and has no further questions",
           "transition_condition": { "type": "prompt", "prompt": "He confirms the payment and has no further questions" },
-          "destination_node_id": "node-end-polite"
+          "destination_node_id": "node-say-goodbye"
         }
       ]
     },
@@ -393,7 +412,7 @@
           "id": "edge-plan-confirmed",
           "condition": "He confirms the terms",
           "transition_condition": { "type": "prompt", "prompt": "He confirms the terms are correct" },
-          "destination_node_id": "node-end-polite"
+          "destination_node_id": "node-say-goodbye"
         },
         {
           "id": "edge-plan-rework",
@@ -417,14 +436,38 @@
           "id": "edge-no-agreement-done",
           "condition": "He gives a follow up time or declines",
           "transition_condition": { "type": "prompt", "prompt": "He gives a time to follow up, or declines to set one" },
-          "destination_node_id": "node-end-polite"
+          "destination_node_id": "node-say-goodbye"
         }
       ]
+    },
+    {
+      "id": "node-say-goodbye",
+      "name": "Say Goodbye",
+      "type": "conversation",
+      "display_position": { "x": 3650, "y": 650 },
+      "instruction": {
+        "type": "prompt",
+        "text": "Thank them for their time and say goodbye. One short, warm sentence. Do not raise anything new."
+      },
+      "edges": [
+        {
+          "id": "edge-goodbye-said",
+          "condition": "Describe the transition condition",
+          "transition_condition": { "type": "prompt", "prompt": "Describe the transition condition" }
+        }
+      ],
+      "skip_response_edge": {
+        "id": "edge-goodbye-skip",
+        "condition": "Skip response",
+        "transition_condition": { "type": "prompt", "prompt": "Skip response" },
+        "destination_node_id": "node-end-polite"
+      }
     },
     {
       "id": "node-end-polite",
       "name": "End Call",
       "type": "end",
+      "display_position": { "x": 4100, "y": 650 },
       "display_position": { "x": 3650, "y": 650 },
       "instruction": {
         "type": "prompt",
