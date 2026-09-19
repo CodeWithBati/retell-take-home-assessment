@@ -13,16 +13,7 @@
       "url": "https://atlas-account-lookup.onrender.com/accounts",
       "method": "GET",
       "timeout_ms": 60000,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "account_number": {
-            "type": "string",
-            "description": "The account number the consumer gave, for example ACC-1001. Pass it as they said it; punctuation and spacing do not matter."
-          }
-        },
-        "required": ["account_number"]
-      }
+      "query_params": { "account_number": "{{account_number}}" }
     }
   ],
   "nodes": [
@@ -171,13 +162,36 @@
           "id": "edge-account-given",
           "condition": "He gives an account number",
           "transition_condition": { "type": "prompt", "prompt": "He has given an account number" },
-          "destination_node_id": "node-lookup"
+          "destination_node_id": "node-extract-account"
         },
         {
           "id": "edge-account-unknown",
           "condition": "He does not have the account number",
           "transition_condition": { "type": "prompt", "prompt": "He does not know his account number, cannot find it, or refuses to give it" },
           "destination_node_id": "node-transfer"
+        }
+      ]
+    },
+    {
+      "id": "node-extract-account",
+      "name": "Capture Account Number",
+      "type": "extract_dynamic_variables",
+      "display_position": { "x": 1200, "y": 400 },
+      "variables": [
+        {
+          "type": "string",
+          "name": "account_number",
+          "description": "The Alpha Bank account number the consumer read out loud, for example ACC-1001. Capture it as spoken; letters, digits, dashes and spaces are all fine.",
+          "examples": ["ACC-1001", "acc 1008", "ACC-1004"],
+          "required": true
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge-extracted-account",
+          "condition": "The account number was captured",
+          "transition_condition": { "type": "prompt", "prompt": "An account number was captured" },
+          "destination_node_id": "node-lookup"
         }
       ]
     },
@@ -229,7 +243,7 @@
           "id": "edge-retry-lookup",
           "condition": "He reads the account number again",
           "transition_condition": { "type": "prompt", "prompt": "He gives an account number again, and it is different from the one already tried" },
-          "destination_node_id": "node-lookup"
+          "destination_node_id": "node-extract-account"
         },
         {
           "id": "edge-retry-failed",
