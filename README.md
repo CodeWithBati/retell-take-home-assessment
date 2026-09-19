@@ -110,22 +110,9 @@ Then try to break it:
 | Wrong SSN | Transfer, disclose nothing |
 | "I dispute this debt" | Stop negotiating, transfer |
 
-**Reference data**
+Use `ACC-1001` for calls. The script fixes the debtor as John Doe, so giving an account belonging to someone else — `ACC-1004` is Priya Nair — makes the agent refuse and transfer rather than disclose one consumer's debt to another.
 
-| Account | Debtor | Balance | Status |
-|---|---|---|---|
-| ACC-1001 | John Doe | $2,100.00 | Settlement Eligible |
-| ACC-1002 | Maria Alvarez | $1,875.50 | Settlement Eligible |
-| ACC-1003 | Kevin Tran | $900.00 | Closed |
-| ACC-1004 | Priya Nair | $12,300.00 | Active |
-| ACC-1005 | Dana Whitfield | $325.75 | Active |
-| ACC-1008 | Omar Haddad | $1,050.25 | Payment Plan |
-| ACC-1009 | Luis Romero | −$125.00 | Active |
-| ACC-1010 | Grace Kim | $780.00 | Settlement Eligible |
-| ACC-1011 | Ann Osei | $0.00 | Closed |
-| ACC-1012 | Tom Becker | $4,500.00 | Settlement Eligible |
-
-`ACC-1008` is stored as `acc 1008` and still resolves. `ACC-1009` and `ACC-1011` carry a credit and a zero balance — both load fine, but the script covers neither, so the agent has no branch for an account with nothing owed.
+The full inventory is in [data/atlas_inventory.csv](data/atlas_inventory.csv). Worth a curl: `ACC-1003` is Closed, `ACC-1008` is stored as `acc 1008` and still resolves, `ACC-1006` returns 404 because it was rejected at ingest, and `ACC-1009` and `ACC-1011` carry a credit and a zero balance that the call script doesn't cover.
 
 ## Deployment
 
