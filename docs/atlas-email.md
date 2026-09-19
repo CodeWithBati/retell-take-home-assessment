@@ -1,13 +1,13 @@
 **To:** Atlas Recovery
 **Subject:** Payment plan eligibility issue — cause, fix, and next steps
 
-Hi [Name],
+Hi Atlas Recovery team,
 
 Thanks for raising this, and I'm sorry it happened. You were right to be concerned: some consumers were told they didn't qualify for a payment plan when they actually did. The cause is understood, the fix is live, and below is what we found and what we're changing.
 
 **What happened**
 
-A configuration change we released on [date] updated how account statuses map to payment plan eligibility. That change incorrectly mapped accounts with a **Settlement Eligible** status as ineligible for a plan. From that release until we corrected it, any consumer on a Settlement Eligible account who asked about a payment plan would have been told they didn't qualify. Other statuses were unaffected, which is why this showed up on some calls and not others.
+A configuration change in our most recent release updated how account statuses map to payment plan eligibility. That change incorrectly mapped accounts with a **Settlement Eligible** status as ineligible for a plan. From that release until we corrected it, any consumer on a Settlement Eligible account who asked about a payment plan would have been told they didn't qualify. Other statuses were unaffected, which is why this showed up on some calls and not others.
 
 **What we changed**
 
@@ -30,5 +30,5 @@ We can pull the list of calls where someone on an eligible account was declined 
 I'm glad you caught this and passed it on. Happy to walk through any part of it, or to review the eligibility mappings with your team if that would help.
 
 Best,
-[Your name]
-CollectWise
+Hannan Bati
+Technical Support Engineer, CollectWise
