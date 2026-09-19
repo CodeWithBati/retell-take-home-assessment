@@ -1,0 +1,16 @@
+Account Number,Debtor Name,Phone Number,Balance,Status,Client Name,Last Payment Date
+ACC-1001,John Doe,(555) 010-1234,"$2,450.00",Active,Alpha Bank,2026-07-14
+ACC-1002,Maria Alvarez,555-010-2231,1875.50,Settlement Eligible,Alpha Bank,2026-06-02
+ACC-1003,Kevin Tran,+1 555 010 3344,900,Closed,Summit Financial,2026-08-21
+
+ACC-1004,Priya Nair,5550104455,"$12,300.00",Active,Summit Financial,
+ACC-1005,Dana Whitfield,123,325.75,Active,Alpha Bank,2026-05-30
+,Unnumbered Consumer,5550105566,400.00,Active,Alpha Bank,2026-04-11
+ACC-1006,Gregory Nash,5550106677,N/A,Active,Alpha Bank,2026-03-08
+ACC-1007,,5550107788,250.00,Active,Alpha Bank,2026-02-19
+acc 1008,Omar Haddad,5550108899,"1,050.25",Payment Plan,Alpha Bank,2026-08-01
+ACC-1009,Luis Romero,5550109900,(125.00),Active,Summit Financial,2026-09-02
+ACC-1010,Grace Kim,555.010.1010,780,Settlement Eligible,Summit Financial,2026-07-30
+ACC-1011,Ann Osei,5550101111,"$0.00",Closed,Summit Financial,2026-01-22
+ACC-1012,Tom Becker,5550101212,4500,Settlement Eligible,Alpha Bank,
+ACC-1001,John Doe,(555) 010-1234,"$2,100.00",Settlement Eligible,Alpha Bank,2026-09-15
